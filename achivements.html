@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>ASE Portal–Achievements Report</title>
+ <link rel="stylesheet" href="style2.css">
+</head>
+<body>
+ <nav class="navbar">
+   <div class="logo-box"><img src="logo3.PNG"></div>
+   <div class="nav-links">
+     <a href="#">Home</a>
+     <a href="billing.html">Billing Report</a>
+     <a href="#" class="active">Achievements Report</a>
+     <button class="btn-logout" onclick="logout()">Logout</button>
+   </div>
+ </nav>
+ 
+ <div class="page">
+   <div class="section-bar">Achievements Report</div>
+   
+   <div class="filter-card">
+     <div class="filter-row">
+       <div class="filter-group">
+         <label>Start Date</label>
+         <input type="date" id="startDate">
+       </div>
+       <div class="filter-group">
+         <label>End Date</label>
+         <input type="date" id="endDate">
+       </div>
+       <div class="filter-group">
+         <label>Man Code</label>
+         <input type="text" id="manCodeDisplay" readonly>
+       </div>
+       <div class="filter-group">
+         <label>Name</label>
+         <input type="text" id="nameDisplay" readonly>
+       </div>
+       <button class="btn-primary" onclick="searchAchievement()">Search</button>
+       <button class="btn-primary" onclick="exportCSV()" id="exportBtn" disabled>Export CSV</button>
+     </div>
+   </div>
+
+   <div class="results-wrap" id="resultsWrap" style="display:none;">
+     <div id="results-count"></div>
+     <table id="resultsTable">
+       <thead>
+         <tr>
+           <th>Products</th><th>Product Wt</th><th>Target</th>
+           <th>Actual Sale RS (Lacs)</th><th>RM To Sales Plan (Lacs)</th><th>RM To Sales Actual (Lacs)</th>
+           <th>RM To Sales Plan (%)</th><th>RM To Sales Actual (%)</th>
+         </tr>
+       </thead>
+       <tbody id="tableBody">
+         <tr><td colspan="8" class="empty-state">Enter exactly 3 months date range and click Search</td></tr>
+       </tbody>
+     </table>
+   </div>
+ </div>
+ <footer>All rights reserved AWL IT.</footer>
+
+ <script>
+const API_BASE = 'http://localhost:8000';
+let currentData = [];
+
+window.onload = function() {
+    document.getElementById('manCodeDisplay').value = sessionStorage.getItem('manCode') || '15678';
+    document.getElementById('nameDisplay').value = sessionStorage.getItem('userName') || 'Mahendra Kumar S';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    
+    if (!sessionStorage.getItem('loggedIn')) {
+        window.location.href = 'index.html';
+    }
+};
+
+async function searchAchievement() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    
+    if (!startDate || !endDate) {
+        alert('Please select both dates');
+        return;
+    }
+    
+    const start = new Date(startDate + 'T00:00:00');
+const end = new Date(endDate + 'T00:00:00');
+const monthsDiff = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+
+if (monthsDiff !== 3 || end.getDate() !== start.getDate()) {
+    alert('Date range must be exactly 3 calendar months (same day)');
+    return;
+}
+    try {
+        const resp = await fetch(`${API_BASE}/api/reports/achievement?startDate=${startDate}&endDate=${endDate}`, {
+            credentials: 'include'
+        });
+        
+        if (resp.status === 401) {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        if (!resp.ok) {
+            const error = await resp.json();
+            alert('Error: ' + error.detail);
+            return;
+        }
+        
+        currentData = await resp.json();
+        
+        const tbody = document.getElementById('tableBody');
+        const resultsCount = document.getElementById('results-count');
+        const resultsWrap = document.getElementById('resultsWrap');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        tbody.innerHTML = '';
+        resultsWrap.style.display = 'block';
+        exportBtn.disabled = false;
+        
+        if (currentData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8">No data found</td></tr>';
+            resultsCount.textContent = '0 results found';
+        } else {
+            currentData.forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${row['Products'] || ''}</td>
+                        <td>${row['Product Wt'] || ''}</td>
+                        <td>${row['Target'] || ''}</td>
+                        <td style="text-align:right;">₹${row['Actual Sale RS (Lacs)'] || ''}</td>
+                        <td style="text-align:right;">₹${row['RM To Sales Plan (Lacs)'] || ''}</td>
+                        <td style="text-align:right;">₹${row['RM To Sales Actual (Lacs)'] || ''}</td>
+                        <td style="text-align:right;">${row['RM To Sales Plan (%)'] || ''}%</td>
+                        <td style="text-align:right;">${row['RM To Sales Actual (%)'] || ''}%</td>
+                    </tr>
+                `;
+            });
+            resultsCount.textContent = `${currentData.length} results found`;
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+function exportCSV() {
+    console.log(' Achievement Export clicked! Data length:', currentData.length);  
+    
+    if (currentData.length === 0) {
+        alert('No data to export - Please search first');
+        return;
+    }
+    
+    const headers = ['Products','Product Wt','Target','Actual Sale RS (Lacs)',
+        'RM To Sales Plan (Lacs)','RM To Sales Actual (Lacs)',
+        'RM To Sales Plan (%)','RM To Sales Actual (%)'];
+    
+    let csv = [headers.join(',')];
+    currentData.forEach(row => {
+        const values = headers.map(h => {
+            let val = row[h] || '';
+       
+            if (typeof val === 'number' || !isNaN(val)) {
+                val = parseFloat(val).toLocaleString('en-IN', { 
+                    minimumFractionDigits: 0, 
+                    maximumFractionDigits: 2 
+                });
+            }
+           
+            if (val && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+                val = '"' + val.toString().replace(/"/g, '""') + '"';
+            }
+            return val;
+        });
+        csv.push(values.join(','));
+    });
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `achievements_${new Date().toISOString().split('T')[0]}.csv`;
+    
+   
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    console.log(' Achievement CSV Download triggered!');
+    alert(`${currentData.length} achievement rows exported!`);
+}
+
+function logout() {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+}
+ </script>
+</body>
+</html>

@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>ASE Portal–Billing Report</title>
+ <link rel="stylesheet" href="style2.css">
+</head>
+<body>
+ <nav class="navbar">
+   <div class="logo-box"><img src="logo3.PNG"></div>
+   <div class="nav-links">
+     <a href="#">Home</a>
+     <a href="#" class="active">Billing Report</a>
+     <a href="achivements.html">Achievements Report</a>
+     <button class="btn-logout" onclick="logout()">Logout</button>
+   </div>
+ </nav>
+ 
+ <div class="page">
+   <div class="section-bar">Billing Report</div>
+   
+   <div class="filter-card">
+     <div class="filter-row">
+       <div class="filter-group">
+         <label>Start Date</label>
+         <input type="date" id="startDate">
+       </div>
+       <div class="filter-group">
+         <label>End Date</label>
+         <input type="date" id="endDate">
+       </div>
+       <div class="filter-group">
+         <label>Man Code</label>
+         <input type="text" id="manCodeDisplay" readonly>
+       </div>
+       <div class="filter-group">
+         <label>Name</label>
+         <input type="text" id="nameDisplay" readonly>
+       </div>
+       <button class="btn-primary" onclick="searchBilling()">Search</button>
+       <button class="btn-primary" onclick="exportCSV()" id="exportBtn" disabled>Export CSV</button>
+     </div>
+   </div>
+
+   <div class="results-wrap" id="resultsWrap" style="display:none;">
+     <div id="results-count"></div>
+     <table id="resultsTable">
+       <thead>
+         <tr>
+           <th>Man Code</th><th>Organization Name</th><th>Order type</th><th>Customer</th>
+           <th>Customer Name</th><th>Invoice no</th><th>Invoice date</th><th>Product Code</th>
+           <th>Product Description</th><th>Qty (KGS/NO)</th><th>UOM</th><th>Net Value (In RS)</th><th>Gross Value</th>
+         </tr>
+       </thead>
+       <tbody id="tableBody">
+         <tr><td colspan="13" class="empty-state">Enter exactly 3 months date range and click Search</td></tr>
+       </tbody>
+     </table>
+   </div>
+ </div>
+ <footer>All rights reserved AWL IT.</footer>
+
+ <script>
+const API_BASE = 'http://localhost:8000';
+let currentData = [];
+
+window.onload = function() {
+    document.getElementById('manCodeDisplay').value = sessionStorage.getItem('manCode') || '15678';
+    document.getElementById('nameDisplay').value = sessionStorage.getItem('userName') || 'Mahendra Kumar S';
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    
+    if (!sessionStorage.getItem('loggedIn')) {
+        window.location.href = 'index.html';
+    }
+};
+
+async function searchBilling() {
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    document.getElementById('startDate').value = '';
+    document.getElementById('endDate').value = '';
+    
+    if (!startDate || !endDate) {
+        alert('Please select both dates');
+        return;
+    }
+    
+    //3-month 
+    const start = new Date(startDate + 'T00:00:00');
+    const end = new Date(endDate + 'T00:00:00');
+    const monthsDiff = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+
+if (monthsDiff !== 3 || end.getDate() !== start.getDate()) {
+    alert('Date range must be exactly 3 calendar months (same day)');
+    return;
+}
+    try {
+        const resp = await fetch(`${API_BASE}/api/reports/billing?startDate=${startDate}&endDate=${endDate}`, {
+            credentials: 'include'
+        });
+        
+        if (resp.status === 401) {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        if (!resp.ok) {
+            const error = await resp.json();
+            alert('Error: ' + error.detail);
+            return;
+        }
+        
+        currentData = await resp.json();
+        
+        const tbody = document.getElementById('tableBody');
+        const resultsCount = document.getElementById('results-count');
+        const resultsWrap = document.getElementById('resultsWrap');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        tbody.innerHTML = '';
+        resultsWrap.style.display = 'block';
+        exportBtn.disabled = false;
+        
+        if (currentData.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="13">No data found</td></tr>';
+            resultsCount.textContent = '0 results found';
+        } else {
+            currentData.forEach(row => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${row['Man Code'] || ''}</td>
+                        <td>${row['Organization Name'] || ''}</td>
+                        <td>${row['Order type'] || ''}</td>
+                        <td>${row['Customer'] || ''}</td>
+                        <td>${row['Customer Name'] || ''}</td>
+                        <td>${row['Invoice no'] || ''}</td>
+                        <td>${row['Invoice date'] || ''}</td>
+                        <td>${row['Product Code'] || ''}</td>
+                        <td>${row['Product Description'] || ''}</td>
+                        <td>${row['Qty (KGS/NO)'] || ''}</td>
+                        <td>${row['UOM'] || ''}</td>
+                        <td style="text-align:right;">₹${row['Net Value (In RS)'] || ''}</td>
+                        <td style="text-align:right;">₹${row['Gross Value'] || ''}</td>
+                    </tr>
+                `;
+            });
+            resultsCount.textContent = `${currentData.length} results found`;
+        }
+    } catch(e) {
+        alert('Error: ' + e.message);
+    }
+}
+
+function exportCSV() {
+    console.log(' Export clicked! Data length:', currentData.length);  // DEBUG
+    
+    if (currentData.length === 0) {
+        alert('No data to export - Please search first');
+        return;
+    }
+    
+    const headers = ['Man Code','Organization Name','Order type','Customer','Customer Name',
+        'Invoice no','Invoice date','Product Code','Product Description',
+        'Qty (KGS/NO)','UOM','Net Value (In RS)','Gross Value'];
+    
+    let csv = [headers.join(',')];
+    currentData.forEach(row => {
+        const values = headers.map(h => {  //Extracts and format values for each header with the row if the value is missing use null 
+            let val = row[h] || '';
+            if (typeof val === 'number') val = val.toLocaleString();  // Format numbers
+            if (val && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+                val = '"' + val.toString().replace(/"/g, '""') + '"';
+            }
+            return val;
+        });
+        csv.push(values.join(','));
+    });
+    
+    const csvContent = csv.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+    const url = window.URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `billing_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);  // ADD THIS
+    a.click();
+    document.body.removeChild(a);  // ADD THIS
+    window.URL.revokeObjectURL(url);
+        
+    console.log(' CSV Download triggered!');  // DEBUG
+    alert(`${currentData.length} rows exported!`);  // CONFIRMATION
+}
+
+function logout() {
+    sessionStorage.clear();
+    window.location.href = 'index.html';
+}
+ </script>
+</body>
+</html>

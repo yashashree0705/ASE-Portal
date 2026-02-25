@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ASE Portal-Login</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main">
+        <img src="logo2.PNG" alt="Ador Welding">
+        <h2>Login User</h2>
+        <form onsubmit="return false;">
+            <label for="loginId">Login Id</label>
+            <input type="text" id="loginId" required>
+            <label for="password">Password</label>
+            <input type="password" id="password" required>
+            <div id="msg"></div>
+            <div class="wrap">
+                <button type="button" onclick="login()">Login</button>
+                <button type="button" onclick="cancel()">Cancel</button>
+            </div>
+        </form>
+    </div>   
+    <script>
+const API_BASE = 'http://localhost:8000';
+
+async function login() {
+    const loginId = document.getElementById('loginId').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('msg');
+    
+    try {
+        const resp = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            credentials: 'include',
+            body: JSON.stringify({loginId, password})
+        });
+        
+        if (resp.ok) {
+            const data = await resp.json();
+            sessionStorage.setItem('loggedIn', 'true');
+            sessionStorage.setItem('manCode', data.manCode);
+            sessionStorage.setItem('userName', data.name);
+            //msg.style.color = '#2e7d32';
+            //msg.textContent = 'Login successful! Redirecting...';
+            setTimeout(() => window.location.href = 'billing.html', 100);
+        } else {
+            msg.textContent = 'Invalid credentials';
+        }
+    } catch(e) {
+        msg.textContent = 'Server error. Check backend.';
+    }
+}
+
+function cancel() {
+    document.getElementById('loginId').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('msg').textContent = '';
+}
+
+document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+if (sessionStorage.getItem('loggedIn') === 'true') window.location.href = 'billing.html';
+    </script>
+</body>
+</html>
+
+
+  <!--<button type="button">Panchayati</button>-->

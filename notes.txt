@@ -1,0 +1,287 @@
+Billing page and achievements page script and result column
+  <!-- Toast 
+  <div id="toast"></div>-->
+
+ <!-- <script>
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function showToast(msg, duration = 2800) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), duration);
+    }
+
+    // Format today's date as DD-Mon-YYYY
+    function formatDate(date) {
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const d = String(date.getDate()).padStart(2,'0');
+      const m = months[date.getMonth()];
+      const y = date.getFullYear();
+      return `${d}-${m}-${y}`;
+    }
+
+    // Prefill start date with today
+    window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('startDate').value = formatDate(new Date());
+    });
+
+    // ── Mock data ────────────────────────────────────────────────────────────
+    const mockData = [
+      { date: '02-Feb-2026', manCode: '15678', name: 'Mahendra Kumar S', item: 'Electrode 3.15mm', qty: 50, amount: 12500 },
+      { date: '03-Feb-2026', manCode: '15678', name: 'Mahendra Kumar S', item: 'Flux Wire 1.2mm',  qty: 20, amount:  9800 },
+      { date: '04-Feb-2026', manCode: '15678', name: 'Mahendra Kumar S', item: 'Electrode 4mm',    qty: 35, amount: 17300 },
+      { date: '05-Feb-2026', manCode: '15678', name: 'Mahendra Kumar S', item: 'Welding Rod 2.5mm',qty: 60, amount:  8400 },
+      { date: '06-Feb-2026', manCode: '15678', name: 'Mahendra Kumar S', item: 'Stainless Rods',   qty: 15, amount: 22100 },
+    ];
+
+    // ── Search ───────────────────────────────────────────────────────────────
+    function search() {
+      const start = document.getElementById('startDate').value.trim();
+      const end   = document.getElementById('endDate').value.trim();
+
+      if (!start) { showToast('⚠ Please enter a Start Date.'); return; }
+
+      const tbody = document.getElementById('tableBody');
+      const count = document.getElementById('results-count');
+
+      // Simulate loading
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state">Loading…</td></tr>`;
+      count.textContent = '';
+
+      setTimeout(() => {
+        // Filter mock data (simple string match on date)
+        const filtered = mockData.filter(row => {
+          if (end) return row.date >= start && row.date <= end;
+          return row.date >= start;
+        });
+
+        if (filtered.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" class="empty-state">No records found for the selected range.</td></tr>`;
+          count.textContent = '';
+          return;
+        }
+
+        count.textContent = `${filtered.length} record(s) found`;
+        tbody.innerHTML = filtered.map((r, i) => `
+          <tr>
+            <td>${i + 1}</td>
+            <td>${r.date}</td>
+            <td>${r.manCode}</td>
+            <td>${r.name}</td>
+            <td>${r.item}</td>
+            <td>${r.qty}</td>
+            <td>₹${r.amount.toLocaleString('en-IN')}</td>
+          </tr>
+        `).join('');
+
+        showToast(`✓ ${filtered.length} records loaded.`);
+      }, 500);
+    }
+
+    // ── Export CSV ───────────────────────────────────────────────────────────
+    function exportCSV() {
+      const rows = document.querySelectorAll('#resultsTable tbody tr');
+      const hasData = rows.length > 0 && !rows[0].querySelector('.empty-state');
+
+      if (!hasData) { showToast('⚠ No data to export. Run a Search first.'); return; }
+
+      const headers = ['#','Date','Man Code','Name','Item','Quantity','Amount (INR)'];
+      const lines   = [headers.join(',')];
+
+      rows.forEach(row => {
+        const cells = Array.from(row.querySelectorAll('td')).map(td =>
+          `"${td.textContent.replace(/"/g,'""')}"`
+        );
+        lines.push(cells.join(','));
+      });
+
+      const blob = new Blob([lines.join('\n')], { type: 'text/csv' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `BillingReport_${Date.now()}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      showToast('✓ CSV exported successfully.');
+    }
+
+    // ── Logout ───────────────────────────────────────────────────────────────
+    function logout() {
+      if (confirm('Are you sure you want to logout?')) {
+        showToast('Logging out…');
+        setTimeout(() => { window.location.href = 'index.html'; }, 1200);
+      }
+    }
+  </script>
+-->
+
+<!-- Results 
+    <div class="results-wrap">
+      <div id="results-count"></div>
+      <table id="resultsTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Date</th>
+            <th>Man Code</th>
+            <th>Name</th>
+            <th>Item</th>
+            <th>Quantity</th>
+            <th>Amount (₹)</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody">
+          <tr>
+            <td colspan="7" class="empty-state">Enter a date range and click <strong>Search</strong> to load results.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>-->
+
+To start the Fastapi server
+uvicorn app.main:app --host 127.0.0.1 --port 8000
+
+To Do small changes at the last :-> 
+ 7. Session Timeout after a long time it should ask to login page again.
+    
+Done 
+ 3. Fix the blank csv files download.
+ 1. Start date end date clearance after every search and after you login everytime.
+ 4. Clean the table when you first reach the billing page only after search should it be visible
+ 5. Learn and attach any LLM if possible 
+ 6. Billing report refresh then all the data should be gone
+ 2. The search can take place for no less than 3 months like it should be in three months span not less not more altogether.
+ 8. Takes a long time to load the data on the billing and achievements page
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
